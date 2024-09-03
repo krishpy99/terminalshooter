@@ -2,29 +2,28 @@
 #include<thread>
 #include<cstdlib>
 #include "board.h"
+#include "structures.h"
 using namespace std;
 
 int main(int argc, char const *argv[]){
-	int prevX1 = -1, prevX2 = -1, prevY1 = -1, prevY2 = -1; 
 	Board b;
 
-	auto placePlayer1 = [&](int x, int y, int X, int Y) -> void {
-		b.placePlayer1(x, y, X, Y);
-	};
+	point prev1, prev2;
 
-	auto placePlayer2 = [&](int x, int y, int X, int Y) -> void {
-		b.placePlayer2(x, y, X, Y);
+	auto placePlayer = [&](char ch, point* prev, point* p) -> void {
+		point q = b.placePlayer(ch, *prev, *p);
+		prev->x = q.x; prev->y = q.y;
 	};
 
 	while(true){
-		int X1 = rand()%21 + 1, X2 = rand()%21 + 1;
-		int Y1 = rand()%58 + 1, Y2 = rand()%58 + 1;   
-		thread t1(placePlayer1, prevX1, prevY1, X1, Y1);
-		thread t2(placePlayer2, prevX2, prevY2, X2, Y2);
+		point p, q;
+		p.x = rand()%21 + 1, q.x = rand()%21 + 1;
+		p.y = rand()%58 + 1, q.y = rand()%58 + 1;   
+		thread t1(placePlayer, 'P', &prev1, &p);
+		thread t2(placePlayer, 'Q', &prev2, &q);
 
 		t1.join();
 		t2.join();
-		prevX1 = X1;prevY1 = Y1;prevX2 = X2;prevY2 = Y2;
 		system("clear");
 		b.showBoard();
 	}

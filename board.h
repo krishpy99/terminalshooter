@@ -1,6 +1,7 @@
 #include<iostream>
 #include<thread>
 #include<mutex>
+#include "structures.h"
 using namespace std;
 
 
@@ -32,22 +33,14 @@ public:
 		}
 	}
 
-	void placePlayer1(int prevX, int prevY, int X, int Y){
-		if(X < 1 || Y < 1 || X > (rows - 2) / 2 or Y > cols - 2) return;
+	point placePlayer(char ch, point prev, point p){
+		if(p.x < 1 || p.y < 1 || p.x > (rows - 2) / 2 or p.y > cols - 2) return prev;
 		lock_guard<mutex> lock(_m);
-		if(prevX != -1){
-			this->board[prevX][prevY] = ' ';
+		if(prev.x != -1){
+			this->board[prev.x][prev.y] = ' ';
 		}
-		this->board[X][Y] = 'P';
-	}
-
-	void placePlayer2(int prevX, int prevY, int X, int Y){
-		if(X < (rows + 2) / 2 || Y < 1 || X > rows - 2 or Y > cols - 2) return;
-		lock_guard<mutex> lock(_m);
-		if(prevX != -1){
-			this->board[prevX][prevY] = ' ';
-		}
-		this->board[X][Y] = 'Q';
+		this->board[p.x][p.y] = ch;
+		return p;
 	}
 
 	void placeBullet(int X, int Y){
