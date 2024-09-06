@@ -1,20 +1,25 @@
 #include<iostream>
+#include<mutex>
+#include "helpers.h"
 using namespace std;
 
 class Player{
 private:
+	mutex _m;
 	char rep;
-	int position[2], pposition[2];
+	point pos;
 	int bullets;
 	int health;
 public:
-	Player(){
-		this->pposition = {-1,-1};
-		this->position = {-1, -1};
+	Player(char ch){
+		this->rep = ch;
 		this->bullets = 10;
 		this->health = 100;
 	}
 
+	char getRep(){
+		return this->rep;
+	}
 	void takeDamage(int damage){
 		this->health -= damage;
 	}
@@ -23,8 +28,17 @@ public:
 		this->bullets += count;
 	}
 
-	int[2] shoot(){
+	point shoot(){
 		this->bullets -= 1;
-		return position;
+		return this->pos;
 	}
-}
+
+	point getPos(){
+		return this->pos;
+	}
+
+	void setPos(point pos){
+		lock_guard<mutex> lock(_m);
+		this->pos = pos;
+	}
+};
