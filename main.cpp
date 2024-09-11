@@ -12,6 +12,7 @@ int main(int argc, char const *argv[]){
 	Board b;
 	Player p1('P'), p2('Q');
 	p1.setPos(b.placeObject(p1.getRep(), p1.getPos(), point(1,1)));
+	p2.setPos(b.placeObject(p2.getRep(), p2.getPos(), point(19,5)));
 
 	mutex _main;
 
@@ -73,6 +74,14 @@ int main(int argc, char const *argv[]){
 			system("clear");
 			b.showBoard();
 		}
+	};
+
+	auto spawnHealth = [&]() -> void {
+		
+	};
+
+	auto spawnBullets = [&]() -> void {
+
 	};
 
 
