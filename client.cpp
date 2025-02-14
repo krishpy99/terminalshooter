@@ -60,30 +60,26 @@ void receiveBoard() {
     }
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        cout << "Usage: ./client <server_ip>" << endl;
-        return 1;
-    }
-    
+void runClient(const std::string &serverIP) {
+        
     struct sockaddr_in serv_addr;
     if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         cout << "Socket creation error" << endl;
-        return -1;
+        return;
     }
     
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(12345);
     
     // Convert the server address from text to binary form
-    if (inet_pton(AF_INET, argv[1], &serv_addr.sin_addr) <= 0) {
+    if (inet_pton(AF_INET, serverIP.c_str(), &serv_addr.sin_addr) <= 0) {
         cout << "Invalid address/ Address not supported" << endl;
-        return -1;
+        return;
     }
     
     if (connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         cout << "Connection Failed" << endl;
-        return -1;
+        return;
     }
     
     // Start threads for capturing input and receiving board updates
@@ -94,5 +90,4 @@ int main(int argc, char* argv[]) {
     receiveThread.join();
     
     close(serverSocket);
-    return 0;
 }

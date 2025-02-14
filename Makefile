@@ -2,16 +2,16 @@
 CXX = g++
 CXXFLAGS = -Wall -pthread -std=c++17
 
-# Default target when you run 'make'
-all: server client
+# Default target: build the unified binary
+all: TerminalShooter
 
-# Link the server executable from its object file(s)
-server: server.o
-	$(CXX) $(CXXFLAGS) -o server server.o
+# Link the executable from its object files
+TerminalShooter: main.o server.o client.o
+	$(CXX) $(CXXFLAGS) -o ShootClub main.o server.o client.o
 
-# Link the client executable from its object file(s)
-client: client.o
-	$(CXX) $(CXXFLAGS) -o client client.o
+# Compile main.cpp into main.o
+main.o: main.cpp game.h
+	$(CXX) $(CXXFLAGS) -c main.cpp
 
 # Compile server.cpp into server.o
 server.o: server.cpp game.h
@@ -23,4 +23,5 @@ client.o: client.cpp game.h
 
 # Clean up build artifacts
 clean:
-	rm -f *.o server client
+	rm -f *.o ShootClub
+

@@ -281,7 +281,7 @@ void gameLoop() {
                         }
                         string msg = "\nGame Over! Player " + to_string(winnerId) + " wins!\n";
                         broadcastBoard(msg);
-                        break;
+                        return;
                     }
                 }
             }
@@ -312,7 +312,7 @@ void spawnPowerUps() {
     }
 }
 
-int main() {
+void runServer() {
     srand(time(0));
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -367,5 +367,4 @@ int main() {
     gameThread.join();
     powerUpThread.join();
     close(server_fd);
-    return 0;
 }
