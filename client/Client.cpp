@@ -1,122 +1,123 @@
-#include "Client.h"
-#include "../shared/Protocol.h"
-#include <arpa/inet.h>
-#include <cstdlib>
-#include <cstring>
+#include "../shared/game.h"
 #include <iostream>
-#include <netinet/in.h>
-#include <sstream>
-#include <string>
-#include <sys/socket.h>
+#include <thread>
+#include <mutex>
 #include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <termios.h>
+#include <cstring>
+#include <cstdlib>
 
-Client::Client() : m_serverSocket(-1), m_inGame(false) {}
+using namespace std;
 
-Client::~Client() {
-    if(m_serverSocket != -1) close(m_serverSocket);
-    if(receiverThread.joinable()) receiverThread.join();
+int serverSocket;
+
+// getch implementation for non-blocking single-character input
+char getch() {
+    char buf = 0;
+    struct termios old;
+    memset(&old, 0, sizeof(old));
+    if (tcgetattr(0, &old) < 0)
+        perror("tcgetattr()");
+    old.c_lflag &= ~ICANON;
+    old.c_lflag &= ~ECHO;
+    old.c_cc[VMIN] = 1;
+    old.c_cc[VTIME] = 0;
+    if (tcsetattr(0, TCSANOW, &old) < 0)
+        perror("tcsetattr ICANON");
+    if (read(0, &buf, 1) < 0)
+        perror("read()");
+    old.c_lflag |= ICANON;
+    old.c_lflag |= ECHO;
+    if (tcsetattr(0, TCSADRAIN, &old) < 0)
+        perror("tcsetattr ~ICANON");
+    return buf;
 }
 
-bool Client::connectToServer(const std::string &ip, int port) {
-    m_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if(m_serverSocket < 0) {
-        std::cerr << "Socket creation error\n";
-        return false;
+// Thread that captures keystrokes and sends them immediately to the server.
+void sendInput() {
+    while (true) {
+        char ch = getch();
+        send(serverSocket, &ch, 1, 0);
+        usleep(50000); // slight delay to prevent flooding
     }
-    sockaddr_in serv_addr;
-    std::memset(&serv_addr, 0, sizeof(serv_addr));
+}
+
+// Thread that receives board state updates from the server and displays them.
+void receiveBoard() {
+    char buffer[4096];
+    while (true) {
+        int bytes = recv(serverSocket, buffer, sizeof(buffer) - 1, 0);
+        if (bytes <= 0) {
+            cout << "Disconnected from server." << endl;
+            exit(0);
+        }
+        buffer[bytes] = '\0';
+        // Clear the terminal using ANSI escape codes instead of system("clear")
+        cout << "\033[H\033[J";
+        cout << buffer << flush;
+    }
+}
+
+// Run the client: connect to the server and perform the initial room command.
+void runClient(const string &serverIP) {
+    struct sockaddr_in serv_addr;
+    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        cout << "Socket creation error" << endl;
+        return;
+    }
+    
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    if(inet_pton(AF_INET, ip.c_str(), &serv_addr.sin_addr) <= 0) {
-        std::cerr << "Invalid address\n";
-        return false;
+    serv_addr.sin_port = htons(12345);
+    
+    if (inet_pton(AF_INET, serverIP.c_str(), &serv_addr.sin_addr) <= 0) {
+        cout << "Invalid address/ Address not supported" << endl;
+        return;
     }
-    if(connect(m_serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        std::cerr << "Connection Failed\n";
-        return false;
+    
+    if (connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        cout << "Connection Failed" << endl;
+        return;
     }
-    return true;
-}
-
-void Client::mainMenu() {
-    int choice;
-    std::string input;
-    std::cout << "1) CREATE GAME\n2) JOIN GAME\n3) EXIT\n";
-    std::getline(std::cin, input);
-    choice = std::atoi(input.c_str());
-    if(choice == 1) {
-        std::string msg = CMD_CREATE + "\n";
-        write(m_serverSocket, msg.c_str(), msg.size());
-        char buffer[1024];
-        int len = read(m_serverSocket, buffer, sizeof(buffer)-1);
-        if(len > 0) {
-            buffer[len] = '\0';
-            std::cout << "Server: " << buffer;
-        }
-        m_inGame = true;
-        gameLoop();
-    } else if(choice == 2) {
-        std::cout << "Enter room code: ";
-        std::string code;
-        std::getline(std::cin, code);
-        std::string msg = CMD_JOIN + " " + code + "\n";
-        write(m_serverSocket, msg.c_str(), msg.size());
-        char buffer[1024];
-        int len = read(m_serverSocket, buffer, sizeof(buffer)-1);
-        if(len > 0) {
-            buffer[len] = '\0';
-            std::string reply(buffer);
-            std::cout << "Server: " << reply;
-            if(reply.find(REPLY_JOIN_OK) != std::string::npos) {
-                m_inGame = true;
-                gameLoop();
-            } else {
-                std::cout << "Join failed\n";
-            }
-        }
+    
+    // Ask user whether to create or join a room.
+    cout << "Enter 'C' to create a room or 'J' to join: ";
+    char choice;
+    cin >> choice;
+    string roomCmd;
+    if (choice == 'C' || choice == 'c') {
+        roomCmd = "C\n";
+    } else if (choice == 'J' || choice == 'j') {
+        cout << "Enter room code: ";
+        string code;
+        cin >> code;
+        roomCmd = "J " + code + "\n";
     } else {
-        std::cout << "Exiting...\n";
+        cout << "Invalid option." << endl;
+        return;
     }
-}
-
-void Client::gameLoop() {
-    // Start receiver thread to get state updates.
-    receiverThread = std::thread(&Client::receiverFunc, this);
-    std::cout << "Enter commands (MOVE <W/A/S/D>, SHOOT, EXIT):\n";
-    while(m_inGame) {
-        std::string line;
-        std::getline(std::cin, line);
-        if(line == "EXIT") {
-            m_inGame = false;
-            break;
-        }
-        line += "\n";
-        write(m_serverSocket, line.c_str(), line.size());
-    }
-    if(receiverThread.joinable())
-        receiverThread.join();
-}
-
-void Client::receiverFunc() {
-    char buffer[1024];
-    while(m_inGame) {
-        int len = read(m_serverSocket, buffer, sizeof(buffer)-1);
-        if(len <= 0) break;
-        buffer[len] = '\0';
-        std::string line(buffer);
-        if(line.find(REPLY_STATE) == 0) {
-            displayState(line);
-        } else if(line.find(REPLY_GAME_OVER) == 0) {
-            std::cout << "Game Over: " << line << "\n";
-            m_inGame = false;
-            break;
-        } else {
-            std::cout << "Server: " << line;
+    // Send the room command.
+    send(serverSocket, roomCmd.c_str(), roomCmd.size(), 0);
+    
+    // Wait for server reply.
+    char reply[1024];
+    int len = recv(serverSocket, reply, sizeof(reply)-1, 0);
+    if (len > 0) {
+        reply[len] = '\0';
+        cout << reply;
+        if (string(reply).find("FAIL") != string::npos) {
+            close(serverSocket);
+            return;
         }
     }
-}
-
-void Client::displayState(const std::string &stateLine) {
-    // For simplicity, just print the state line.
-    std::cout << stateLine;
+    
+    // Start threads to send input and receive board state.
+    thread inputThread(sendInput);
+    thread receiveThread(receiveBoard);
+    inputThread.join();
+    receiveThread.join();
+    
+    close(serverSocket);
 }

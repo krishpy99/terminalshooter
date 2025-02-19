@@ -1,18 +1,31 @@
-#include "Client.h"
-#include <cstdlib>
+#include "../shared/game.h"
 #include <iostream>
+#include <thread>
+#include <string>
+#include <chrono>
+#include <cstdlib>
+
+using namespace std;
+
+// Forward declaration of runClient (implemented in client.cpp)
+void runClient(const string &serverIP);
+
+// Utility function to clear the screen.
+void clearScreen() {
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+// For demonstration, we assume the local IP is 127.0.0.1.
+string getLocalIPAddress() {
+    return "127.0.0.1";
+}
 
 int main(int argc, char* argv[]) {
-    std::string serverIp = "127.0.0.1";
-    int port = 12345;
-    if(argc > 1) serverIp = argv[1];
-    if(argc > 2) port = std::atoi(argv[2]);
-    
-    Client client;
-    if(!client.connectToServer(serverIp, port)) {
-        std::cerr << "Failed to connect to server\n";
-        return EXIT_FAILURE;
-    }
-    client.mainMenu();
+    string serverIP = argc > 1 ? argv[1] : getLocalIPAddress();
+    runClient(serverIP);
     return 0;
 }

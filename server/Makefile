@@ -1,6 +1,6 @@
 CXX = g++
-CXXFLAGS = -std=c++11 -pthread -Wall -O2
-SRCS = main.cpp Server.cpp Room.cpp
+CXXFLAGS = -std=c++20 -pthread -Wall -O2
+SRCS = server.cpp
 OBJS = $(SRCS:.cpp=.o)
 TARGET = server
 
@@ -10,7 +10,7 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS)
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -I../shared -c $< -o $@
 
 clean:
 	rm -f $(OBJS) $(TARGET)
