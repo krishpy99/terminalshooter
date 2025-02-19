@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <map>
 #include <semaphore> // C++20 semaphore header
+#include <cstring>
 
 using namespace std;
 
