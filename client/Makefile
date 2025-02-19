@@ -1,13 +1,17 @@
 CXX = g++
-CXXFLAGS = -Wall -std=c++17
+CXXFLAGS = -std=c++17 -pthread -Wall -I../shared
 
-all: client
+SRCS = main.cpp ClientCore.cpp ../shared/NetworkUtils.cpp ../shared/Logger.cpp
+OBJS = $(SRCS:.cpp=.o)
+TARGET = client
 
-client: client.o
-	$(CXX) $(CXXFLAGS) -o client client.o
+all: $(TARGET)
 
-client.o: client.cpp
-	$(CXX) $(CXXFLAGS) -c client.cpp
+$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS)
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f client.o client
+	rm -f $(OBJS) $(TARGET) 
